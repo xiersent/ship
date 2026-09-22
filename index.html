@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Депрессия</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            min-height: 100dvh;
+            overflow: hidden;
+            background:
+                radial-gradient(ellipse at center, #1a1a22 0%, #0a0a12 70%);
+            font-family: "Courier New", Courier, monospace;
+            color: #c8c8c8;
+        }
+
+        .frame {
+            --frame-pad: 18px;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: var(--frame-pad);
+            max-width: calc(100vw - 32px);
+            max-height: calc(100vh - 32px);
+            max-height: calc(100dvh - 32px);
+            cursor: pointer;
+            transition: width 0.35s ease, aspect-ratio 0.35s ease;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
+        /* вертикальный сториз */
+        .frame--story {
+            width: min(72vw, 360px, calc((100dvh - 32px) * 9 / 16));
+            aspect-ratio: 9 / 16;
+            height: auto;
+        }
+
+        /* квадрат */
+        .frame--square {
+            width: min(86vw, 480px, calc(100dvh - 32px));
+            aspect-ratio: 1 / 1;
+            height: auto;
+        }
+
+        /* горизонтальный */
+        .frame--landscape {
+            width: min(92vw, 720px, calc((100dvh - 32px) * 16 / 9));
+            aspect-ratio: 16 / 9;
+            height: auto;
+        }
+
+        .frame__corner {
+            position: absolute;
+            width: 28px;
+            height: 28px;
+            border-color: #9a9a9a;
+            border-style: solid;
+            border-width: 0;
+        }
+
+        .frame__corner--tl {
+            top: 0;
+            left: 0;
+            border-top-width: 2px;
+            border-left-width: 2px;
+        }
+
+        .frame__corner--tr {
+            top: 0;
+            right: 0;
+            border-top-width: 2px;
+            border-right-width: 2px;
+        }
+
+        .frame__corner--bl {
+            bottom: 0;
+            left: 0;
+            border-bottom-width: 2px;
+            border-left-width: 2px;
+        }
+
+        .frame__corner--br {
+            bottom: 0;
+            right: 0;
+            border-bottom-width: 2px;
+            border-right-width: 2px;
+        }
+
+        .frame__panel {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: #5a5a5a;
+            overflow: hidden;
+        }
+
+        .frame__media {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        video.frame__media {
+            background: #3a3a3a;
+            pointer-events: none;
+        }
+
+        .frame__text {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 4;
+            width: min(36ch, 72vw);
+            margin: 0;
+            padding: 0;
+            font-size: clamp(14px, 2.8vw, 17px);
+            line-height: 1.55;
+            text-align: center;
+            color: #d6d6d6;
+            text-wrap: balance;
+            text-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <!--
+      Тап / клик по рамке циклит формат: квадрат → сториз → горизонтальный.
+      Старт: data-format="square" | story | landscape | random
+    -->
+    <div
+        class="frame"
+        data-format="random"
+        role="button"
+        tabindex="0"
+        aria-label="Сменить формат рамки"
+    >
+        <span class="frame__corner frame__corner--tl"></span>
+        <span class="frame__corner frame__corner--tr"></span>
+        <span class="frame__corner frame__corner--bl"></span>
+        <span class="frame__corner frame__corner--br"></span>
+
+        <div class="frame__panel">
+            <!-- фото:
+            <img class="frame__media" src="photo.jpg" alt="">
+            -->
+            <!-- видео:
+            <video class="frame__media" src="clip.mp4" muted loop playsinline autoplay></video>
+            -->
+        </div>
+    </div>
+
+    <p class="frame__text" role="main">
+        Вам снова показывают эти фото или видео — очень старые.
+        Вы их удалили. Незнаете, где они.
+        А они, например, вот они.
+    </p>
+
+<script>
+    /* квадрат → вертикальный сториз → горизонтальный */
+    const CYCLE_FORMATS = [
+        'frame--square',
+        'frame--story',
+        'frame--landscape',
+    ];
+
+    const FORMAT_ALIASES = {
+        square: 'frame--square',
+        story: 'frame--story',
+        landscape: 'frame--landscape',
+        'image/gif': 'frame--square',
+        'image/png': 'frame--story',
+        'image/heic': 'frame--story',
+        'image/jpeg': 'frame--landscape',
+        'image/webp': 'frame--landscape',
+        'video/mp4': 'frame--landscape',
+        'video/webm': 'frame--landscape',
+    };
+
+    function applyFormat(frame, formatClass) {
+        frame.classList.remove(...CYCLE_FORMATS);
+        frame.classList.add(formatClass);
+        frame.dataset.format = formatClass.replace('frame--', '');
+    }
+
+    function currentFormatIndex(frame) {
+        return CYCLE_FORMATS.findIndex((cls) => frame.classList.contains(cls));
+    }
+
+    function cycleFormat(frame) {
+        const current = currentFormatIndex(frame);
+        const next = (current + 1) % CYCLE_FORMATS.length;
+        applyFormat(frame, CYCLE_FORMATS[next]);
+    }
+
+    function initFrame(frame) {
+        const requested = frame.dataset.format;
+        let formatClass;
+
+        if (!requested || requested === 'random') {
+            formatClass = CYCLE_FORMATS[Math.floor(Math.random() * CYCLE_FORMATS.length)];
+        } else {
+            formatClass = FORMAT_ALIASES[requested] || CYCLE_FORMATS[0];
+        }
+
+        applyFormat(frame, formatClass);
+
+        frame.addEventListener('click', () => cycleFormat(frame));
+        frame.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                cycleFormat(frame);
+            }
+        });
+    }
+
+    document.querySelectorAll('.frame').forEach(initFrame);
+</script>
+</body>
+</html>
