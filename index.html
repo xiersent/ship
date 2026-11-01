@@ -133,6 +133,7 @@
             text-wrap: balance;
             text-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
             pointer-events: none;
+            transform-origin: center center;
         }
     </style>
 </head>
@@ -190,10 +191,43 @@
         'video/webm': 'frame--landscape',
     };
 
+    const TEXT_INSET = 20;
+    let fitFrame = 0;
+
+    function fitText(frame) {
+        const text = document.querySelector('.frame__text');
+        const panel = frame.querySelector('.frame__panel');
+        if (!text || !panel) return;
+
+        text.style.transform = 'translate(-50%, -50%)';
+        const panelRect = panel.getBoundingClientRect();
+        const textRect = text.getBoundingClientRect();
+        const availW = panelRect.width - TEXT_INSET * 2;
+        const availH = panelRect.height - TEXT_INSET * 2;
+        const scale = textRect.width > 0 && textRect.height > 0 && availW > 0 && availH > 0
+            ? Math.min(1, availW / textRect.width, availH / textRect.height)
+            : 1;
+
+        text.style.transform = `translate(-50%, -50%) scale(${scale})`;
+    }
+
+    function fitThroughTransition(frame) {
+        const start = performance.now();
+        cancelAnimationFrame(fitFrame);
+        const tick = (now) => {
+            fitText(frame);
+            if (now - start < 420) {
+                fitFrame = requestAnimationFrame(tick);
+            }
+        };
+        fitFrame = requestAnimationFrame(tick);
+    }
+
     function applyFormat(frame, formatClass) {
         frame.classList.remove(...CYCLE_FORMATS);
         frame.classList.add(formatClass);
         frame.dataset.format = formatClass.replace('frame--', '');
+        fitThroughTransition(frame);
     }
 
     function currentFormatIndex(frame) {
@@ -218,6 +252,7 @@
 
         applyFormat(frame, formatClass);
 
+        window.addEventListener('resize', () => fitThroughTransition(frame));
         frame.addEventListener('click', () => cycleFormat(frame));
         frame.addEventListener('keydown', (event) => {
             if (event.key === 'Enter' || event.key === ' ') {
